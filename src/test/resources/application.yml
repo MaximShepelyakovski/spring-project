@@ -2,9 +2,9 @@ spring:
   datasource:
     url: jdbc:h2:mem:test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     # url: jdbc:mysql://localhost:3306/user_db
-    # url: jdbc:postgresql://localhost:5432/user_db
-    username: root
-    password: root
+    #url: jdbc:postgresql://localhost:45432/user_db
+    username: postgres
+    password: 1qaz2wsXX
   tomcat:
     max-wait: 20000
     max-active: 50
@@ -17,10 +17,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
         # dialect: org.hibernate.dialect.MySQL8Dialect
-        # dialect: org.hibernate.dialect.PostgreSQLDialect
+        #dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         id:
           new_generator_mappings: false
+  activemq:
+    broker-url:
 
 server:
   port: 8080 # This is the default port anyway, but you can change it here
@@ -39,3 +41,4 @@ UserController:
   delete: Deletes specific user by username
   search: Returns specific user by username
   me: Returns current user's data
+
