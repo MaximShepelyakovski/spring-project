@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.Email;
+import java.util.Date;
 import java.util.List;
 
 @Data
@@ -15,10 +16,15 @@ import java.util.List;
 public class UserDataDTO {
 
     private String username;
-    @Email(message = "Email not valid")
-    private String email;
     @ValidPassword
     private String password;
+    @Email(message = "Email not valid")
+    private String email;
+    private String firstName;
+    private String lastName;
+    private Date birthday;
+    private Date registrationDate;
+    private String photos;
     private List<Role> roles;
 
 }
