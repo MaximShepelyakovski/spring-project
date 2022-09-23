@@ -1,10 +1,10 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:base_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     # url: jdbc:mysql://localhost:3306/user_db
-    # url: jdbc:postgresql://localhost:5432/user_db
-    username: root
-    password: root
+    #url: jdbc:postgresql://localhost:45432/user_db
+    username: postgres
+    password: 1qaz2wsXX
   tomcat:
     max-wait: 20000
     max-active: 50
@@ -17,7 +17,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
         # dialect: org.hibernate.dialect.MySQL8Dialect
-        # dialect: org.hibernate.dialect.PostgreSQLDialect
+        #dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         id:
           new_generator_mappings: false
@@ -32,10 +32,15 @@ security:
     token:
       secret-key: secret-key
       expire-length: 300000 # 5 minutes duration by default: 5 minutes * 60 seconds * 1000 milliseconds
-      
+
 UserController:
   signin: Authenticates user and returns its JWT token.
   signup: Creates user and returns its JWT token
   delete: Deletes specific user by username
   search: Returns specific user by username
   me: Returns current user's data
+
+upload:
+  path:
+    image: /home/softkit/Documents/Job/Courses/spring-boot-base-learning/src/main/images/
+    csv: /home/softkit/Documents/Job/Courses/spring-boot-base-learning/src/main/csv/
