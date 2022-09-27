@@ -143,10 +143,6 @@ public class CacheLogicTest  extends AbstractControllerTest{
 
 
     }
-
-
-
-
     private UserDataDTO getValidUserForSignup() {
         UUID randomUUID = UUID.randomUUID();
         return new UserDataDTO(
