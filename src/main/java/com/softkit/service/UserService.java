@@ -5,11 +5,14 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.softkit.exception.CustomException;
 import com.softkit.fileConfig.FileUploadUtil;
-import com.softkit.mapper.UserMapper;
+import com.softkit.model.Invite;
 import com.softkit.model.Role;
+import com.softkit.model.Status;
 import com.softkit.model.User;
+import com.softkit.repository.InviteRepository;
 import com.softkit.repository.UserRepository;
 import com.softkit.security.JwtTokenProvider;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -38,13 +41,15 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class UserService {
-
+    @Autowired
     private final UserRepository userRepository;
+    @Autowired
+    private final InviteRepository inviteRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
-
-    private final UserMapper userMapper;
+    @Autowired
+    private final InviteService inviteService;
 
     @Autowired
     private EmailSenderService emailSenderService;
@@ -53,14 +58,29 @@ public class UserService {
     private Environment env;
 
     public User userFromToken(HttpServletRequest request){
-        return userRepository.findByUsername(jwtTokenProvider.getUsername(jwtTokenProvider.resolveToken(request)));
+
+        if (userRepository.existsByUsername(jwtTokenProvider.getUsername(jwtTokenProvider.resolveToken(request))))
+        {
+            return userRepository.findByUsername(jwtTokenProvider.getUsername(jwtTokenProvider.resolveToken(request)));
+        }
+        else {
+            throw new CustomException("Expired or invalid JWT token",HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+
     }
 
-
-    public String signin(String username, String password) {
+    public String signin(String usernameOrEmail, String password) {
         try {
+
+            String username = usernameOrEmail;
+
+            if (userRepository.existsByEmailIgnoreCase(usernameOrEmail)){
+                username = userRepository.findByEmail(usernameOrEmail).getUsername();
+            }
+
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
             if (userRepository.findByUsername(username).isEnabled()){
-                authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
                 return jwtTokenProvider.createToken(username, userRepository.findByUsername(username).getRoles());
             }
             else {
@@ -85,6 +105,12 @@ public class UserService {
         user.setVerificationCode(UUID.randomUUID() + "");
         user.setEnabled(false);
         userRepository.save(user);
+
+        if (inviteRepository.existsByEmail(user.getEmail())) {
+            Invite userInvite = inviteRepository.findByEmail(user.getEmail());
+            userInvite.setStatus(Lists.newArrayList(Status.CLOSED));
+            inviteRepository.save(userInvite);
+        }
 
         String url = "http://localhost:8080/users/verify?code=" + user.getVerificationCode();
         String subject = "Thank you for registering";
@@ -123,7 +149,7 @@ public class UserService {
         User user = userFromToken(request);
         return jwtTokenProvider.createToken(user.getUsername(), user.getRoles());
     }
-    @CacheEvict("searchUser")
+    @CacheEvict(cacheNames = "searchUser", allEntries = true)
     public void saveImage(MultipartFile multipartFile,HttpServletRequest request) throws IOException {
 
         User user = userFromToken(request);
@@ -135,7 +161,6 @@ public class UserService {
         FileUploadUtil.saveFile(uploadDir, fileName, multipartFile);
     }
 
-    @CacheEvict("searchUser")
     public File getImage(HttpServletRequest request){
 
         User user = userFromToken(request);
@@ -144,14 +169,15 @@ public class UserService {
 
     }
 
-    //@CacheEvict("searchUser")
+    @CacheEvict(cacheNames = "searchUser", allEntries = true)
     public void updateData(String firstName,String lastName, HttpServletRequest request ){
         User user = userFromToken(request);
         user.setFirstName(firstName);
         user.setLastName(lastName);
         userRepository.save(user);
     }
-    @CacheEvict("searchUser")
+
+    @CacheEvict(cacheNames = "searchUser", allEntries = true)
     public void adminUpdateData(String username,String firstName,String lastName){
         User userUpdate = userRepository.findByUsername(username);
         userUpdate.setFirstName(firstName);
@@ -159,9 +185,12 @@ public class UserService {
         userRepository.save(userUpdate);
 
     }
-    @CacheEvict("searchUser")
-    public void updateEmail(String email,HttpServletRequest request){
 
+    @CacheEvict(cacheNames = "searchUser", allEntries = true)
+    public void updateEmail(String email,HttpServletRequest request){
+        if (userRepository.existsByEmailIgnoreCase(email)){
+            throw new CustomException("The email is already in use by other users.", HttpStatus.UNPROCESSABLE_ENTITY);
+        }
         User user = userFromToken(request);
 
         user.setUpdateEmail(email);
@@ -187,7 +216,7 @@ public class UserService {
         }
     }
 
-    public File exportCSV(int page, int size){
+    public File exportCSV(){
 
         File file = new File(env.getProperty("upload.path.csv") + "usersCSV.csv");
 
@@ -203,7 +232,7 @@ public class UserService {
             List<User> usersResult = new ArrayList<>();
 
 
-            int totalpages = -1;
+            int totalpages = -1,page = 0,size = 3;
             do {
                 PageRequest pageRequest = PageRequest.of(page, size);
                 Page<User> user = userRepository.findAll(pageRequest);
@@ -233,7 +262,7 @@ public class UserService {
         }
     }
 
-    public String importCSV(MultipartFile multipartFile) throws IOException {
+    public String importCSV(MultipartFile multipartFile,HttpServletRequest request) throws IOException {
 
         if (!Objects.equals(multipartFile.getContentType(), "text/csv")) {
             throw new CustomException("This is not a csv file.", HttpStatus.UNPROCESSABLE_ENTITY);
@@ -243,39 +272,19 @@ public class UserService {
         Integer countUsers = 0;
 
         try(CSVReader csvReader = new CSVReader(fileReader)){
-
-
             List<String[]> list = new ArrayList<>();
             String[] line;
             while ((line = csvReader.readNext()) != null) {
                 list.add(line);
             }
             for (int i=1; i<list.size(); i++) {
-                    if (userRepository.existsByUsernameIgnoreCase(list.get(i)[0].toLowerCase())) {
-                        continue;
-                    }
 
-                    if (userRepository.existsByEmailIgnoreCase(list.get(i)[1].toLowerCase())) {
-                        continue;
-                    }
+                if (userRepository.existsByEmailIgnoreCase(list.get(i)[0].toLowerCase())) {
+                    continue;
+                }
 
-                    User user = new User();
-
-                    user.setUsername(list.get(i)[0]);
-                    user.setPassword("HeisenbuG1!");
-                    user.setEmail(list.get(i)[1]);
-                    user.setFirstName(list.get(i)[2]);
-                    user.setLastName(list.get(i)[3]);
-                    user.setBirthday(Date.valueOf(list.get(i)[4]));
-
-                    if (Objects.equals(list.get(i)[5], "[ROLE_ADMIN]")){
-                        user.setRoles(Lists.newArrayList(Role.ROLE_ADMIN));
-                    }
-                    if (Objects.equals(list.get(i)[5], "[ROLE_CLIENT]")){
-                        user.setRoles(Lists.newArrayList(Role.ROLE_CLIENT));
-                    }
-                    signup(user);
-                    countUsers++;
+                inviteService.inviteUser(list.get(i)[0],request);
+                countUsers++;
 
             }
         }
@@ -303,4 +312,6 @@ public class UserService {
             throw new CustomException("No such user", HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
+
+
 }
