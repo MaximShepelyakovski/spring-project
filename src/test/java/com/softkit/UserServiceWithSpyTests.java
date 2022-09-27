@@ -18,8 +18,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-@ExtendWith(MockitoExtension.class)
-@ExtendWith(SpringExtension.class)
 @SpringBootTest(classes = {StarterApplication.class})
 public class UserServiceWithSpyTests {
 
@@ -29,6 +27,7 @@ public class UserServiceWithSpyTests {
     //    spying is keeping the existing functionality but allow to intercept method calls or track count of invocations of this method
     //    useful for checking that cache/optimisations working properly
     @SpyBean
+    @Autowired
     private AuthenticationManager authenticationManager;
 
     @Captor

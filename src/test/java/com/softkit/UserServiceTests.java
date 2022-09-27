@@ -1,15 +1,18 @@
 package com.softkit;
 
+import com.google.common.collect.Lists;
 import com.softkit.exception.CustomException;
+import com.softkit.model.Role;
 import com.softkit.model.User;
 import com.softkit.service.UserService;
-import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
+import java.sql.Date;
 
 
 /**
@@ -26,14 +29,34 @@ public class UserServiceTests {
 
     @Test
     public void successUserSignupTest() {
-        String signupToken1 = userService.signup(new User(null, "test", "test", "test",
-                Lists.newArrayList()));
-
-        assertThat(signupToken1).isNotBlank();
+        userService.signup(new User(null,
+                "SOFTkit",
+                "HeisenbuG1!",
+                "maxim.shepelyakovski@gmail.com",
+                null,
+                "maxim",
+                "maxim",
+                Date.valueOf("2003-01-11"),
+                Date.valueOf("2000-01-11"),
+                "photo",
+                Lists.newArrayList(Role.ROLE_CLIENT),
+                "asdasdas",
+                false));
 
         try {
-            userService.signup(new User(null, "test", "test", "test",
-                    Lists.newArrayList()));
+            userService.signup(new User(null,
+                    "SOFTkit",
+                    "HeisenbuG1!",
+                    "maxim.shepelyakovski@gmail.com",
+                    null,
+                    "maxim",
+                    "maxim",
+                    Date.valueOf("2003-01-11"),
+                    Date.valueOf("2000-01-11"),
+                    "photo",
+                    Lists.newArrayList(Role.ROLE_CLIENT),
+                    "asdasdas",
+                    false));
         } catch (CustomException e) {
             assertThat(e.getMessage()).isEqualTo("Username is already in use");
             assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
