@@ -3,9 +3,11 @@ package com.softkit.controller;
 import com.softkit.dto.UserDataDTO;
 import com.softkit.dto.UserResponseDTO;
 import com.softkit.mapper.UserMapper;
+import com.softkit.model.Role;
 import com.softkit.service.UserService;
 import io.swagger.annotations.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Arrays;
 
 @CrossOrigin
 @RestController
@@ -29,6 +32,7 @@ import java.io.IOException;
 @Api(tags = "users")
 public class UserController {
 
+    @Autowired
     private final UserService userService;
     private final UserMapper userMapper;
 
@@ -38,10 +42,11 @@ public class UserController {
             @ApiResponse(code = 400, message = "Something went wrong"),
             @ApiResponse(code = 422, message = "Invalid username/password supplied")})
     public String login(
-            @ApiParam("Username") @RequestParam String username,
-            @ApiParam("Password") @RequestParam String password) {
-        return userService.signin(username, password);
+            @ApiParam("usernameOrEmail") @RequestParam String usernameOrEmail,
+            @ApiParam("password") @RequestParam String password) {
+        return userService.signin(usernameOrEmail, password);
     }
+
 
     @PostMapping("/signup")
     @ApiOperation(value = "${UserController.signup}")
@@ -53,6 +58,8 @@ public class UserController {
         userService.signup(userMapper.mapUserDataToUser(user));
         return ResponseEntity.ok("An email confirmation link has been sent to you.");
     }
+
+
 
     @GetMapping("/verify")
     @ApiOperation(value = "${UserController.verify}")
@@ -186,7 +193,7 @@ public class UserController {
         return ResponseEntity.ok("Success");
     }
 
-    @PostMapping("/verify/email")
+    @GetMapping("/verify/email")
     @ApiOperation(value = "${UserController.verifyEmail}")
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "Something went wrong")})
@@ -201,10 +208,9 @@ public class UserController {
             @ApiResponse(code = 400, message = "Something went wrong"),
             @ApiResponse(code = 403, message = "Access denied"),
             @ApiResponse(code = 500, message = "Expired or invalid JWT token")})
-    public ResponseEntity<InputStreamResource> exportCSV(@ApiParam("page") @RequestParam Integer page,
-                                                         @ApiParam("size") @RequestParam Integer size) throws FileNotFoundException {
+    public ResponseEntity<InputStreamResource> exportCSV() throws FileNotFoundException {
 
-        File csvFile = userService.exportCSV(page,size);
+        File csvFile = userService.exportCSV();
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("content-disposition", "inline;filename=" +csvFile.getName());
@@ -225,8 +231,9 @@ public class UserController {
             @ApiResponse(code = 400, message = "Something went wrong"),
             @ApiResponse(code = 403, message = "Access denied"),
             @ApiResponse(code = 500, message = "Expired or invalid JWT token")})
-    public ResponseEntity<String> importCSV(@RequestParam("csv") MultipartFile multipartFile) throws IOException {
-       String body = userService.importCSV(multipartFile);
+    public ResponseEntity<String> importCSV(@RequestParam("csv") MultipartFile multipartFile,
+                                            HttpServletRequest request) throws IOException {
+       String body = userService.importCSV(multipartFile,request);
        return ResponseEntity.ok(body);
     }
 
