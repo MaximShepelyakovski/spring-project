@@ -21,6 +21,8 @@ spring:
         format_sql: true
         id:
           new_generator_mappings: false
+    show-sql: true
+
   activemq:
     broker-url:
 
